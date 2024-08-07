@@ -18,7 +18,7 @@ message("CMAKE_SOURCE_DIR is : ${CMAKE_SOURCE_DIR}")
 
 file(GLOB Main ${CMAKE_SOURCE_DIR}/*.cpp)
 file(GLOB MainHeader ${CMAKE_SOURCE_DIR}/*.h)
-file(GLOB OracleClient ${CMAKE_SOURCE_DIR}/ocis/instantclient_23_4)
+file(GLOB OracleClient ${CMAKE_SOURCE_DIR}/ocis/instantclient_10_2)
 
 file(GLOB StaticLibs ${OracleClient}/sdk/lib/msvc/*.lib)
 

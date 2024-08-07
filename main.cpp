@@ -1,391 +1,124 @@
 
-//代码的目的就是验证makefile中oracle的头文件和lib文件路径是否正确了  
 #include <iostream>
 
-#define WIN32COMMON //避免函数重定义错误  
+#define WIN32COMMON
 
 #include <occi.h>
 
 using namespace std;
 using namespace oracle::occi;
 
+Environment *G_ENV;
+Connection *G_CON;
+Statement *G_STATE;
 
-#define USERNAME_LEN 256
-#define PASSWORD_LEN 1025
-#define DBNAME_LEN   1025
 
-#if defined(WIN32COMMON) || defined(WIN32) || defined(_WIN32)
-int getline(char **bufp, size_t *bufl, FILE *stream);
-int getline(char **bufp, size_t *bufl, FILE *stream)
-{
-    fgets(*bufp, *bufl, stream);
-    if (ferror(stream))
-        return -1;
-    return strlen(*bufp);
+bool connect();
+
+int generateStatement();
+
+void printResultSet(const std::string&);
+
+void disConnect();
+
+bool connect() {
+    try {
+        // 创建 OCCI 上下文环境  
+        G_ENV = Environment::createEnvironment();
+        if (nullptr == G_ENV) {
+            printf("createEnvironment error.\n");
+            return false;
+        } else {
+            cout << "createEnvironment success" << endl;
+        }
+
+        string name = "user_dev";
+        string pass = "123456";
+        string connectString = "127.0.0.1:1521/pdb";
+        // string connectString = "127.0.0.1:1521/xe";
+        // 创建数据库连接  
+        G_CON = G_ENV->createConnection(name, pass, connectString);
+        if (nullptr == G_CON) {
+            printf("createConnection error.\n");
+            return false;
+        } else {
+            cout << "conn success" << endl;
+        }
+    }
+    catch (SQLException e) {
+        cout << e.what() << endl;
+        return false;
+    }
+
+    return true;
 }
-#endif
 
-static  char *username;
-static  char *password;
-static  char *dbname;
+int generateStatement() {
 
-static int getCredentials();
-
-class  occidml
-{
-private:
-
-    Environment *env;
-    Connection *conn;
-    Statement *stmt;
-public:
-
-    occidml (string user, string passwd, string db)
-    {
-        env = Environment::createEnvironment (Environment::DEFAULT);
-        conn = env->createConnection (user, passwd, db);
-    }
-
-    ~occidml ()
-    {
-        env->terminateConnection (conn);
-        Environment::terminateEnvironment (env);
-    }
-    
-    
-    
-    void createTable(){
-        try{
-            string sqlStmt = "CREATE TABLE author_tab (author_id NUMBER, author_name VARCHAR2(25))";
-            stmt=conn->createStatement (sqlStmt);
-            stmt->executeUpdate ();
-            conn->terminateStatement (stmt);
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for createTable"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
+    try {
+        G_STATE = G_CON->createStatement();
+        if (NULL == G_STATE) {
+            printf("createStatement error.\n");
+            return -1;
         }
     }
-    void deleteTable(){
-        try{
-            string sqlStmt = "DROP TABLE author_tab";
-            stmt=conn->createStatement (sqlStmt);
-            stmt->executeUpdate();
-            conn->terminateStatement (stmt);
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for deleteTable"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
+    catch (SQLException e) {
+        cout << e.what() << endl;
+        return -1;
     }
-    /**
-     * Insertion of a row with dynamic binding, PreparedStatement functionality.
-     */
-    void insertBind (int c1, string c2)
-    {
-        string sqlStmt = "INSERT INTO author_tab VALUES (:x, :y)";
-        stmt=conn->createStatement (sqlStmt);
-        try{
-            stmt->setInt (1, c1);
-            stmt->setString (2, c2);
-            stmt->executeUpdate ();
-            cout << "insert - Success" << endl;
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for insertBind"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
-
-        conn->terminateStatement (stmt);
-    }
-
-    /**
-     * Inserting a row into the table.
-     */
-    void insertRow ()
-    {
-        string sqlStmt = "INSERT INTO author_tab VALUES (111, 'ASHOK')";
-        stmt = conn->createStatement (sqlStmt);
-        try{
-            stmt->executeUpdate ();
-            cout << "insert - Success" << endl;
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for insertRow"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
-
-        conn->terminateStatement (stmt);
-    }
-
-    /**
-     * updating a row
-     */
-    void updateRow (int c1, string c2)
-    {
-        string sqlStmt =
-                "UPDATE author_tab SET author_name = :x WHERE author_id = :y";
-        stmt = conn->createStatement (sqlStmt);
-        try{
-            stmt->setString (1, c2);
-            stmt->setInt (2, c1);
-            stmt->executeUpdate ();
-            cout << "update - Success" << endl;
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for updateRow"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
-
-        conn->terminateStatement (stmt);
-    }
-
-
-    /**
-     * deletion of a row
-     */
-    void deleteRow (int c1, string c2)
-    {
-        string sqlStmt =
-                "DELETE FROM author_tab WHERE author_id= :x AND author_name = :y";
-        stmt = conn->createStatement (sqlStmt);
-        try{
-            stmt->setInt (1, c1);
-            stmt->setString (2, c2);
-            stmt->executeUpdate ();
-            cout << "delete - Success" << endl;
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for deleteRow"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
-
-        conn->terminateStatement (stmt);
-    }
-
-    /**
-     * displaying all the rows in the table
-     */
-    void displayAllRows ()
-    {
-        // CREATE TABLE author_tab ( 
-        //   author_id NUMBER, 
-        //   author_name VARCHAR2(25) 
-        // )
-        string sqlStmt = "SELECT * FROM author_tab";
-        stmt = conn->createStatement (sqlStmt);
-        ResultSet *rset = stmt->executeQuery ();
-        try{
-            vector<MetaData> metaData = rset->getColumnListMetaData();
-            int count = metaData.size();
-            for (const auto &item: metaData) {
-                std::string cName = item.getString(oracle::occi::MetaData::ATTR_NAME);
-                printf("%s,", cName.c_str());
-            }
-            printf("\n");
-            while (rset->next()) {
-                for (int i = 0; i < count; ++i) {
-                    printf("%s,", rset->getString(i + 1).c_str());
-                }
-                printf("\n");
-            }
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for displayAllRows"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
-
-        stmt->closeResultSet (rset);
-        conn->terminateStatement (stmt);
-    }
-
-    /**
-     * Inserting a row into elements table.
-     * Demonstrating the usage of BFloat and BDouble datatypes
-     */
-    void insertElement (string elm_name, float mvol=0.0, double awt=0.0)
-    {
-        BFloat mol_vol;
-        BDouble at_wt;
-
-        if (!(mvol))
-            mol_vol.isNull = TRUE;
-        else
-            mol_vol.value = mvol;
-
-        if (!(awt))
-            at_wt.isNull = TRUE;
-        else
-            at_wt.value = awt;
-
-        string sqlStmt = "INSERT INTO elements VALUES (:v1, :v2, :v3)";
-        stmt = conn->createStatement (sqlStmt);
-
-        try{
-            stmt->setString(1, elm_name);
-            stmt->setBFloat(2, mol_vol);
-            stmt->setBDouble(3, at_wt);
-            stmt->executeUpdate ();
-            cout << "insertElement - Success" << endl;
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for insertElement"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
-        conn->terminateStatement (stmt);
-    }
-
-    /**
-     * displaying rows from element table
-     */
-    void displayElements ()
-    {
-        string sqlStmt =
-                "SELECT element_name, molar_volume, atomic_weight FROM elements \
-    order by element_name";
-        stmt = conn->createStatement (sqlStmt);
-        ResultSet *rset = stmt->executeQuery ();
-        try{
-            cout.precision(7);
-            while (rset->next ())
-            {
-                string elem_name = rset->getString(1);
-                BFloat mol_vol = rset->getBFloat(2);
-                BDouble at_wt = rset->getBDouble(3);
-
-                cout << "Element Name: " << elem_name << endl;
-
-                if ( mol_vol.isNull )
-                    cout << "Molar Volume is NULL" << endl;
-                else
-                    cout << "Molar Volume: " << mol_vol.value << " cm3 mol-1" << endl;
-
-                if ( at_wt.isNull )
-                    cout << "Atomic Weight is NULL" << endl;
-                else
-                    cout << "Atomic Weight: " << at_wt.value << " g/mole" << endl;
-            }
-        }catch(SQLException ex)
-        {
-            cout<<"Exception thrown for displayElements"<<endl;
-            cout<<"Error number: "<<  ex.getErrorCode() << endl;
-            cout<<ex.getMessage() << endl;
-        }
-
-        stmt->closeResultSet (rset);
-        conn->terminateStatement (stmt);
-    }
-
-}; // end of class  occidml
-
-
-
-static int getCredentials()
-{
-    // size_t usernameLen = USERNAME_LEN;
-    // size_t passwordLen = PASSWORD_LEN;
-    // size_t dbnameLen = DBNAME_LEN;
-    // int nread;
-    // username = (char *) malloc(USERNAME_LEN * sizeof(char));
-    // password = (char *) malloc(PASSWORD_LEN * sizeof(char));
-    // dbname = (char *) malloc(DBNAME_LEN * sizeof(char));
-    //
-    // memset(username, 0, USERNAME_LEN);
-    // memset(password, 0, PASSWORD_LEN);
-    // memset(dbname, 0, DBNAME_LEN);
-    //
-    // cout << "enter username:";
-    // if ((nread = getline(&username, &usernameLen, stdin)) == -1)
-    // {
-    //     cout << "ERROR: Failed to get username\n";
-    //     return -1;
-    // }
-    // if(strlen(username) >= 1)
-    //     username[strlen(username)-1] = '\0';
-    // cout << "enter password:";
-    // if ((nread = getline(&password, &passwordLen, stdin)) == -1)
-    // {
-    //     cout << "ERROR: Failed to get password\n";
-    //     return -1;
-    // }
-    // if(strlen(password) >= 1)
-    //     password[strlen(password)-1] = '\0';
-    // cout << "enter dbname:";
-    // if ((nread = getline(&dbname, &dbnameLen, stdin)) == -1)
-    // {
-    //     cout << "ERROR: Failed to get dbname\n";
-    //     return -1;
-    // }
-    // if(strlen(dbname) >= 1)
-    //     dbname[strlen(dbname)-1] = '\0';
-    //
-    // cout << "\n";
-    username = "user_dev";
-    password = "123456";
-    dbname = "127.0.0.1:1521/pdb";
     return 0;
 }
 
+
+void printResultSet(const std::string& sql) {
+    try {
+        ResultSet *pRs = G_STATE->executeQuery(sql);
+        vector<MetaData> metaData = pRs->getColumnListMetaData();
+        int count = metaData.size();
+        for (const auto &item: metaData) {
+            std::string cName = item.getString(oracle::occi::MetaData::ATTR_NAME);
+            printf("%s,", cName.c_str());
+        }
+        printf("\n");
+        while (pRs->next()) {
+            for (int i = 0; i < count; ++i) {
+                printf("%s,", pRs->getString(i + 1).c_str());
+            }
+            printf("\n");
+        }
+        G_STATE->closeResultSet(pRs);
+    }
+    catch (SQLException e) {
+        cout << e.what() << endl;
+    }
+}
+
+
+void disConnect() {
+    // 终止 Statement 对象    
+    if (G_STATE){
+        G_CON->terminateStatement(G_STATE);
+    }
+    if (G_ENV){
+        // 关闭连接  
+        G_ENV->terminateConnection(G_CON);
+        // 释放 OCCI 上下文环境    
+        Environment::terminateEnvironment(G_ENV);
+    }
+    cout << "end!" << endl;
+}
+
+
 int main() {
+    // system("pause");
 
-    getCredentials();
-    try{
-        cout << "occidml - Exhibiting simple insert, delete & update operations"
-             << endl;
-        occidml *demo = new occidml (username, password, dbname);
+    if (connect()){
+        generateStatement();
 
-        demo->deleteTable();
-        demo->createTable();
-        
-        cout << "Displaying all records before any operation" << endl;
-        demo->displayAllRows ();
-
-        cout << "Inserting a record into the table author_tab "
-             << endl;
-        demo->insertRow ();
-
-        cout << "Displaying the records after insert " << endl;
-        demo->displayAllRows ();
-
-        cout << "Inserting a records into the table author_tab using dynamic bind"
-             << endl;
-        demo->insertBind (222, "ANAND");
-
-        cout << "Displaying the records after insert using dynamic bind" << endl;
-        demo->displayAllRows ();
-
-        cout << "deleting a row with author_id as 222 from author_tab table" << endl;
-        demo->deleteRow (222, "ANAND");
-
-        cout << "updating a row with author_id as 444 from author_tab table" << endl;
-        demo->updateRow (444, "ADAM");
-
-        cout << "displaying all rows after all the operations" << endl;
-        demo->displayAllRows ();
-
-        // cout << "inserting radio active element properties" << endl;
-        // demo->insertElement ("Uranium", 12.572, 238.0289 );
-        // demo->insertElement ("Plutonium", 12.12, 244.0642 );
-        // demo->insertElement ("Curium", 18.17, 247.0703 );
-        // demo->insertElement ("Thorium");
-        // demo->insertElement ("Radium", 41.337, 226.0254);
-        //
-        // cout << "displaying all radio active element properties" << endl;
-        // demo->displayElements ();
-
-        delete (demo);
+        printResultSet("SELECT * FROM all_users");
+        disConnect();
     }
-    catch (SQLException ex){
-        cout << ex.getMessage() << endl;
-    }
-    cout << "occidml - done" << endl;
+    // system("pause");
+
     return 0;
 }  

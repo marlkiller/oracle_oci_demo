@@ -35,7 +35,7 @@ bool connect() {
         string name = "user_dev";
         string pass = "123456";
         string connectString = "127.0.0.1:1521/pdb";
-
+        // string connectString = "127.0.0.1:1521/xe";
         // 创建数据库连接  
         G_CON = G_ENV->createConnection(name, pass, connectString);
         if (nullptr == G_CON) {
@@ -49,12 +49,12 @@ bool connect() {
         cout << e.what() << endl;
         return false;
     }
-    
+
     return true;
 }
 
 int generateStatement() {
-    
+
     try {
         G_STATE = G_CON->createStatement();
         if (NULL == G_STATE) {
@@ -110,12 +110,15 @@ void disConnect() {
 
 
 int main() {
-
+    // system("pause");
+    
     if (connect()){
         generateStatement();
-       
+
         printResultSet("SELECT * FROM all_users");
         disConnect();
     }
+    // system("pause");
+
     return 0;
 }  
