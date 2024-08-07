@@ -1,5 +1,5 @@
 
-## oracle oci develop
+## oracle oci develop ( for windows )
 
 https://www.oracle.com/database/technologies/instant-client/winx64-64-downloads.html
 
@@ -37,7 +37,7 @@ cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug ..
 cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release ..
 ```
 
-### 4. commit
+### 4. commit ( for big .dll file )
 
 ```
 git lfs install
